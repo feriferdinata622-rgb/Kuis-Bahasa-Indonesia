@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kuis Seru Berhadiah</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#170F2B; --card:#221A3D; --ink:#F3EEFF; --sub:#B7A9E0;
+    --pink:#FF3D81; --gold:#FFC857; --line:#382C5C;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',sans-serif;
+    min-height:100svh;display:flex;justify-content:center;align-items:flex-start;padding:32px 16px}
+  .wrap{width:100%;max-width:460px}
+  h1{font-family:'Archivo Black',sans-serif;font-size:2rem;line-height:1.05;margin:0 0 6px}
+  .tag{color:var(--gold);font-weight:600;margin:0 0 24px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:24px}
+  .qnum{color:var(--sub);font-weight:600;font-size:.85rem;margin:0 0 8px}
+  .qtext{font-size:1.15rem;font-weight:800;margin:0 0 18px}
+  .opt{display:block;width:100%;text-align:left;background:#2C2251;border:1px solid var(--line);
+    color:var(--ink);border-radius:12px;padding:14px 16px;margin-bottom:10px;font-size:1rem;
+    font-family:inherit;cursor:pointer;transition:background .15s,border-color .15s}
+  .opt:hover{border-color:var(--pink)}
+  .opt.correct{background:#1F4A38;border-color:#4ADE80}
+  .opt.wrong{background:#4A1F2E;border-color:var(--pink)}
+  .opt:disabled{cursor:default}
+  .bar{height:6px;background:var(--line);border-radius:4px;overflow:hidden;margin-bottom:20px}
+  .bar>div{height:100%;background:var(--gold);transition:width .3s}
+  .score{font-family:'Archivo Black',sans-serif;font-size:3rem;color:var(--gold);margin:0}
+  label{display:block;font-weight:600;font-size:.85rem;margin:16px 0 6px}
+  input{width:100%;padding:13px 14px;border-radius:10px;border:1px solid var(--line);
+    background:#2C2251;color:var(--ink);font-size:1rem;font-family:inherit}
+  input:focus{outline:2px solid var(--pink)}
+  button.primary{margin-top:22px;width:100%;padding:15px;border:0;border-radius:12px;
+    background:var(--pink);color:#fff;font-weight:800;font-size:1rem;cursor:pointer}
+  button.primary:disabled{opacity:.5;cursor:default}
+  .hint{color:var(--sub);font-size:.85rem;margin-top:14px}
+  .center{text-align:center}
+  .hidden{display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Kuis Seru Berhadiah</h1>
+  <p class="tag">Jawab 5 pertanyaan, daftar, menangkan hadiahnya!</p>
+
+  <div class="card">
+    <!-- QUIZ -->
+    <div id="quizView">
+      <div class="bar"><div id="progressBar" style="width:20%"></div></div>
+      <p class="qnum" id="qNum">Soal 1 dari 5</p>
+      <p class="qtext" id="qText"></p>
+      <div id="qOptions"></div>
+    </div>
+
+    <!-- SCORE -->
+    <div id="scoreView" class="hidden center">
+      <p class="qnum">Selesai!</p>
+      <p class="score" id="scoreText">0/5</p>
+      <p class="hint">Isi data di bawah untuk ikut undian hadiah.</p>
+      <button class="primary" id="toFormBtn">Lanjut daftar undian</button>
+    </div>
+
+    <!-- FORM -->
+    <div id="formView" class="hidden">
+      <p class="qnum">Data pendaftaran</p>
+      <label for="fName">Nama lengkap</label>
+      <input id="fName" autocomplete="name" placeholder="Nama kamu">
+      <label for="fTiktok">Username TikTok</label>
+      <input id="fTiktok" placeholder="@username">
+      <label for="fPhone">Nomor HP (WhatsApp aktif)</label>
+      <input id="fPhone" type="tel" placeholder="08xxxxxxxxxx">
+      <button class="primary" id="submitBtn">Kirim &amp; ikut undian</button>
+      <p class="hint" id="formMsg"></p>
+    </div>
+
+    <!-- DONE -->
+    <div id="doneView" class="hidden center">
+      <p class="qnum">Terima kasih!</p>
+      <p class="qtext">Kamu resmi ikut undian hadiahnya. Pemenang akan dihubungi lewat WhatsApp.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+// ====== GANTI URL INI dengan Web App URL dari Google Apps Script kamu ======
+const GOOGLE_SCRIPT_URL = "PASTE_URL_WEB_APP_APPS_SCRIPT_DI_SINI";
+// ============================================================================
+
+// Edit soal di bawah ini sesuai kebutuhan kamu
+const QUESTIONS = [
+  { q: "Ibu kota Indonesia adalah?", options: ["Bandung", "Jakarta", "Surabaya", "Medan"], correct: 1 },
+  { q: "1 + 1 x 2 hasilnya?", options: ["4", "3", "2", "6"], correct: 1 },
+  { q: "Planet terdekat dengan Matahari?", options: ["Bumi", "Venus", "Merkurius", "Mars"], correct: 2 },
+  { q: "Warna bendera Indonesia?", options: ["Merah-Putih", "Merah-Biru", "Putih-Biru", "Kuning-Merah"], correct: 0 },
+  { q: "Hewan tercepat di darat?", options: ["Singa", "Kuda", "Cheetah", "Rusa"], correct: 2 },
+];
+
+let current = 0, score = 0;
+const answers = [];
+
+const qNum = document.getElementById('qNum');
+const qText = document.getElementById('qText');
+const qOptions = document.getElementById('qOptions');
+const progressBar = document.getElementById('progressBar');
+
+function renderQuestion(){
+  const item = QUESTIONS[current];
+  qNum.textContent = `Soal ${current + 1} dari ${QUESTIONS.length}`;
+  progressBar.style.width = `${((current) / QUESTIONS.length) * 100}%`;
+  qText.textContent = item.q;
+  qOptions.innerHTML = '';
+  item.options.forEach((opt, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'opt';
+    btn.textContent = opt;
+    btn.onclick = () => selectAnswer(i);
+    qOptions.appendChild(btn);
+  });
+}
+
+function selectAnswer(i){
+  const item = QUESTIONS[current];
+  const buttons = qOptions.querySelectorAll('.opt');
+  buttons.forEach(b => b.disabled = true);
+  buttons[item.correct].classList.add('correct');
+  if(i !== item.correct) buttons[i].classList.add('wrong');
+  else score++;
+  answers.push(i === item.correct);
+  progressBar.style.width = `${((current + 1) / QUESTIONS.length) * 100}%`;
+  setTimeout(() => {
+    current++;
+    if(current < QUESTIONS.length) renderQuestion();
+    else showScore();
+  }, 700);
+}
+
+function showScore(){
+  document.getElementById('quizView').classList.add('hidden');
+  document.getElementById('scoreView').classList.remove('hidden');
+  document.getElementById('scoreText').textContent = `${score}/${QUESTIONS.length}`;
+}
+
+document.getElementById('toFormBtn').onclick = () => {
+  document.getElementById('scoreView').classList.add('hidden');
+  document.getElementById('formView').classList.remove('hidden');
+};
+
+document.getElementById('submitBtn').onclick = async () => {
+  const name = document.getElementById('fName').value.trim();
+  const tiktok = document.getElementById('fTiktok').value.trim();
+  const phone = document.getElementById('fPhone').value.trim();
+  const msg = document.getElementById('formMsg');
+  const btn = document.getElementById('submitBtn');
+
+  if(!name || !tiktok || !phone){
+    msg.textContent = "Isi semua data dulu ya.";
+    return;
+  }
+  if(GOOGLE_SCRIPT_URL.includes("PASTE_URL")){
+    msg.textContent = "GOOGLE_SCRIPT_URL belum diisi di kode — lihat instruksi setup.";
+    return;
+  }
+
+  btn.disabled = true;
+  msg.textContent = "Mengirim...";
+
+  try{
+    const data = new URLSearchParams({
+      nama: name,
+      tiktok: tiktok,
+      hp: phone,
+      skor: `${score}/${QUESTIONS.length}`,
+      waktu: new Date().toISOString(),
+    });
+    // no-cors: Apps Script tidak mengirim header CORS, jadi respons tidak bisa dibaca,
+    // tapi data tetap terkirim dan tersimpan di Google Sheet.
+    await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: data });
+    document.getElementById('formView').classList.add('hidden');
+    document.getElementById('doneView').classList.remove('hidden');
+  }catch(err){
+    msg.textContent = "Gagal mengirim, coba lagi.";
+    btn.disabled = false;
+  }
+};
+
+renderQuestion();
+</script>
+</body>
+</html>
