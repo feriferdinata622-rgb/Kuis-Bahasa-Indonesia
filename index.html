@@ -41,6 +41,11 @@
   .hint{color:var(--sub);font-size:.85rem;margin-top:14px}
   .center{text-align:center}
   .hidden{display:none}
+  #review{text-align:left;margin:18px 0}
+  .rv{background:#2C2251;border-left:4px solid var(--line);border-radius:10px;
+    padding:12px 14px;margin-bottom:10px;font-size:.92rem;line-height:1.5}
+  .rv.ok{border-color:#4ADE80}
+  .rv.no{border-color:var(--pink)}
 </style>
 </head>
 <body>
@@ -61,6 +66,7 @@
     <div id="scoreView" class="hidden center">
       <p class="qnum">Selesai!</p>
       <p class="score" id="scoreText">0/5</p>
+      <div id="review"></div>
       <p class="hint">Isi data di bawah untuk ikut undian hadiah.</p>
       <button class="primary" id="toFormBtn">Lanjut daftar undian</button>
     </div>
@@ -75,7 +81,7 @@
       <label for="fPhone">Nomor HP (WhatsApp aktif)</label>
       <input id="fPhone" type="tel" placeholder="08xxxxxxxxxx">
       <button class="primary" id="submitBtn">Kirim &amp; ikut undian</button>
-      <p class="hint" id="formMsg"></p>
+      <p class="hint" id="formMsg">Data hanya dipakai untuk keperluan undian.</p>
     </div>
 
     <!-- DONE -->
@@ -87,9 +93,9 @@
 </div>
 
 <script>
-// ====== GANTI URL INI dengan Web App URL dari Google Apps Script kamu ======
-const GOOGLE_SCRIPT_URL = "PASTE_URL_WEB_APP_APPS_SCRIPT_DI_SINI";
-// ============================================================================
+// ====== GANTI dengan Access Key dari web3forms.com (dikirim ke emailmu) ======
+const WEB3FORMS_KEY = "ISI_ACCESS_KEY_KAMU";
+// ==============================================================================
 
 // Edit soal di bawah ini sesuai kebutuhan kamu
 const QUESTIONS = [
@@ -111,7 +117,7 @@ const progressBar = document.getElementById('progressBar');
 function renderQuestion(){
   const item = QUESTIONS[current];
   qNum.textContent = `Soal ${current + 1} dari ${QUESTIONS.length}`;
-  progressBar.style.width = `${((current) / QUESTIONS.length) * 100}%`;
+  progressBar.style.width = `${(current / QUESTIONS.length) * 100}%`;
   qText.textContent = item.q;
   qOptions.innerHTML = '';
   item.options.forEach((opt, i) => {
@@ -130,7 +136,7 @@ function selectAnswer(i){
   buttons[item.correct].classList.add('correct');
   if(i !== item.correct) buttons[i].classList.add('wrong');
   else score++;
-  answers.push(i === item.correct);
+  answers.push(i);
   progressBar.style.width = `${((current + 1) / QUESTIONS.length) * 100}%`;
   setTimeout(() => {
     current++;
@@ -143,6 +149,20 @@ function showScore(){
   document.getElementById('quizView').classList.add('hidden');
   document.getElementById('scoreView').classList.remove('hidden');
   document.getElementById('scoreText').textContent = `${score}/${QUESTIONS.length}`;
+
+  const review = document.getElementById('review');
+  review.innerHTML = '';
+  QUESTIONS.forEach((item, idx) => {
+    const picked = answers[idx];
+    const ok = picked === item.correct;
+    const div = document.createElement('div');
+    div.className = 'rv ' + (ok ? 'ok' : 'no');
+    div.innerHTML =
+      `<b>${idx + 1}. ${item.q}</b><br>` +
+      `Jawabanmu: ${item.options[picked]} ${ok ? '✅' : '❌'}` +
+      (ok ? '' : `<br>Jawaban benar: <b>${item.options[item.correct]}</b>`);
+    review.appendChild(div);
+  });
 }
 
 document.getElementById('toFormBtn').onclick = () => {
@@ -161,8 +181,8 @@ document.getElementById('submitBtn').onclick = async () => {
     msg.textContent = "Isi semua data dulu ya.";
     return;
   }
-  if(GOOGLE_SCRIPT_URL.includes("PASTE_URL")){
-    msg.textContent = "GOOGLE_SCRIPT_URL belum diisi di kode — lihat instruksi setup.";
+  if(WEB3FORMS_KEY.includes("ISI_ACCESS_KEY")){
+    msg.textContent = "WEB3FORMS_KEY belum diisi di kode.";
     return;
   }
 
@@ -170,16 +190,22 @@ document.getElementById('submitBtn').onclick = async () => {
   msg.textContent = "Mengirim...";
 
   try{
-    const data = new URLSearchParams({
-      nama: name,
-      tiktok: tiktok,
-      hp: phone,
-      skor: `${score}/${QUESTIONS.length}`,
-      waktu: new Date().toISOString(),
+    const res = await fetch("https://api.web3forms.com/submit", {
+      method: 'POST',
+      headers: {'Content-Type':'application/json','Accept':'application/json'},
+      body: JSON.stringify({
+        access_key: WEB3FORMS_KEY,
+        subject: "Peserta baru - Kuis Seru Berhadiah",
+        from_name: "Kuis Seru Berhadiah",
+        Nama: name,
+        TikTok: tiktok,
+        "No HP": phone,
+        Skor: `${score}/${QUESTIONS.length}`,
+        Waktu: new Date().toLocaleString('id-ID')
+      })
     });
-    // no-cors: Apps Script tidak mengirim header CORS, jadi respons tidak bisa dibaca,
-    // tapi data tetap terkirim dan tersimpan di Google Sheet.
-    await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: data });
+    const json = await res.json();
+    if(!json.success) throw new Error();
     document.getElementById('formView').classList.add('hidden');
     document.getElementById('doneView').classList.remove('hidden');
   }catch(err){
