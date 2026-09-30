@@ -93,9 +93,8 @@
 </div>
 
 <script>
-// ====== GANTI dengan Access Key dari web3forms.com (dikirim ke emailmu) ======
-const WEB3FORMS_KEY = "Idfedd3e4-a4dd-4a04-8d77-938802525fe6";
-// ==============================================================================
+// Access Key dari web3forms.com
+const WEB3FORMS_KEY = "dfedd3e4-a4dd-4a04-8d77-938802525fe6";
 
 // Edit soal di bawah ini sesuai kebutuhan kamu
 const QUESTIONS = [
@@ -181,10 +180,6 @@ document.getElementById('submitBtn').onclick = async () => {
     msg.textContent = "Isi semua data dulu ya.";
     return;
   }
-  if(WEB3FORMS_KEY.includes("ISI_ACCESS_KEY")){
-    msg.textContent = "WEB3FORMS_KEY belum diisi di kode.";
-    return;
-  }
 
   btn.disabled = true;
   msg.textContent = "Mengirim...";
@@ -212,6 +207,7 @@ document.getElementById('submitBtn').onclick = async () => {
     msg.textContent = "Gagal mengirim: " + err.message;
     btn.disabled = false;
   }
+};
 
 renderQuestion();
 </script>
