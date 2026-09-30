@@ -205,14 +205,13 @@ document.getElementById('submitBtn').onclick = async () => {
       })
     });
     const json = await res.json();
-    if(!json.success) throw new Error();
+    if(!json.success) throw new Error(json.message || "Ditolak server");
     document.getElementById('formView').classList.add('hidden');
     document.getElementById('doneView').classList.remove('hidden');
   }catch(err){
-    msg.textContent = "Gagal mengirim, coba lagi.";
+    msg.textContent = "Gagal mengirim: " + err.message;
     btn.disabled = false;
   }
-};
 
 renderQuestion();
 </script>
